@@ -107,7 +107,7 @@ class studyDetails(BasePlugin):
         
     def run(self):
                     
-        studies_datatable_path =  os.path.join(self._config.getSourceDataDir(), "datasets/", self._plugin_settings["dataset"], "/datatables", self._plugin_settings["datatable"])
+        studies_datatable_path =  os.path.join(self._config.getSourceDataDir(), "datasets", self._plugin_settings["dataset"], "datatables", self._plugin_settings["datatable"])
     
         if os.path.isdir(studies_datatable_path) != True:
             sys.stdout.write("Making the data directory, i.e. " + studies_datatable_path + '\n')
