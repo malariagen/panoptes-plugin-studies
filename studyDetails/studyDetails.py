@@ -55,6 +55,11 @@ class studyDetails(BasePlugin):
                                                  'description': 'Where to fetch the study descriptions - can usually be left as default',
                                                  'default': 'https://alfresco.cggh.org/alfresco/service/cggh/collaborations'
                                                  }),
+                                  ('dataset', {
+                                                 'type': 'Text',
+                                                 'description': 'The name of the dataset',
+                                                 'default': 'pvivax_test'
+                                                 }),
                                   ('datatable', {
                                                  'type': 'Text',
                                                  'description': 'The name of the data table where the output will be written',
@@ -102,7 +107,7 @@ class studyDetails(BasePlugin):
         
     def run(self):
                     
-        studies_datatable_path =  os.path.join(self._config.getSourceDataDir(), "datatables",self._plugin_settings["datatable"])
+        studies_datatable_path =  os.path.join(self._config.getSourceDataDir(), "datasets", self._plugin_settings["dataset"], "datatables", self._plugin_settings["datatable"])
     
         if os.path.isdir(studies_datatable_path) != True:
             sys.stdout.write("Making the data directory, i.e. " + studies_datatable_path + '\n')
