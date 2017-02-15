@@ -7,7 +7,7 @@ import urllib2
 import os
 import json
 from jinja2 import Template
-from customresponders.panoptesserver.importer.BasePlugin import BasePlugin
+from responders.importer.BasePlugin import BasePlugin
 
     
 class studyDetails(BasePlugin):
@@ -53,7 +53,7 @@ class studyDetails(BasePlugin):
                                    ('studiesURL', {
                                                  'type': 'Text',
                                                  'description': 'Where to fetch the study descriptions - can usually be left as default',
-                                                 'default': 'https://alfresco.cggh.org/alfresco/service/cggh/collaborations'
+                                                 'default': 'https://alfresco.malariagen.net/share/proxy/alfresco/cggh/collaborations'
                                                  }),
                                   ('dataset', {
                                                  'type': 'Text',
@@ -223,8 +223,10 @@ class studyDetails(BasePlugin):
         # create a password manager
         password_mgr = urllib2.HTTPPasswordMgrWithDefaultRealm()
 
+        print str(self._plugin_settings["userId"])
+
         top_level_url = self._plugin_settings["studiesURL"]
-        password_mgr.add_password(None, top_level_url, self._plugin_settings["userId"],self._plugin_settings["password"])
+        password_mgr.add_password(None, top_level_url, self._plugin_settings["userId"], self._plugin_settings["password"])
         
         handler = urllib2.HTTPBasicAuthHandler(password_mgr)
         
@@ -235,6 +237,8 @@ class studyDetails(BasePlugin):
         # use the opener to fetch a URL
         
         json_file = opener.open(json_url)
+        
+        print str(json_file.read())
         
         data = json.load(json_file)
         
