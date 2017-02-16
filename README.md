@@ -21,6 +21,6 @@ Create a directory under <<dataset>>/pre e.g. <<dataset>>/pre/studies
 
 In there, create a file named `settings`, containing the settings values for this plugin. See the `plugin.settings.example` file and the `getSettings` method in `studyDetails.py` for clues.
 
-When Panoptes is run, a file named `data` will be created in the `datatable` directory, according to this plugin's settings. The `data` file will be imported into Panoptes in the usual way.
+When the Panoptes' dataset import is run, files named `data` will be created in the three `datatable` directories, according to this plugin's settings. Each `data` file will be imported into Panoptes in the usual way.
 
-See the `datatable.settings.example` file for a set of example settings that match the `data` file created by this plugin.
+See the three `datatable.settings.example` files for example settings that match the `data` files created by this plugin.
