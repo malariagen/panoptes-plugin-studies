@@ -1,0 +1,14 @@
+nameSingle: study
+namePlural: studies
+primKey: Study_number
+properties:
+- id: Study_number
+  dataType: Text
+- id: webTitle
+  dataType: Text
+- id: description
+  dataType: Text
+- id: publications
+  dataType: Text
+- id: people
+  dataType: Text
