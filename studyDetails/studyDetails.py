@@ -176,7 +176,7 @@ class studyDetails(BasePlugin):
                 
                 project_name = project["name"];
                 
-                if project_name == filter_by_project_name:
+                if filter_by_project_name is None or project_name == filter_by_project_name:
                     is_in_project = True
                     break
             
@@ -253,7 +253,7 @@ class studyDetails(BasePlugin):
         server = self._plugin_settings["ldapServer"]
         user_dn = self._plugin_settings['userDN']
         user_pw = self._plugin_settings['ldapPassword']
-        
+
         if server == None:
             return
         
@@ -313,15 +313,16 @@ class studyDetails(BasePlugin):
             group = study["group" + group_type]
             for study_person in group:
                 malariagenUID = study_person['malariagenUID']
-                person = people[malariagenUID]
-                if malariagenUID in study_people:
-                    for p in study_list:
-                        if p['malariagenUID'] == malariagenUID:
-                            p['class'].append(group_type)
-                else:
-                    person['class'] = [group_type]
-                    study_people[malariagenUID] = person
-                    study_list.append(person)
+                if malariagenUID in people.keys():
+                    person = people[malariagenUID]
+                    if malariagenUID in study_people:
+                        for p in study_list:
+                            if p['malariagenUID'] == malariagenUID:
+                                p['class'].append(group_type)
+                    else:
+                        person['class'] = [group_type]
+                        study_people[malariagenUID] = person
+                        study_list.append(person)
                     
         return study_list
                 
