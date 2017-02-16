@@ -15,13 +15,15 @@ deactivate
 Usage
 =====
 
-Install the plugin either by setting `PLUGINPATH` in the panoptes config or by copying the `studyDetails` directory to the `server/responders/importer/plugins` directory
+Install this plugin either by setting `PLUGINPATH` in the Panoptes config or by copying the `studyDetails` directory to the `server/responders/importer/plugins` directory
 
 Create a directory under <<dataset>>/pre e.g. <<dataset>>/pre/studies
 
-In there create a settings file with the plugin settings values. See the `settings.example` file and the `getSettings` method in `studyDetails.py` for clues.
+In there, create a file named `settings`, containing the settings values for this plugin. See the `plugin.settings.example` file and the `getSettings` method in `studyDetails.py` for clues.
 
-When panoptes is run a data file will be created according to the settings which can be loaded in the usual way.
+When Panoptes is run, a file named `data` will be created in the `datatable` directory, according to this plugin's settings. The `data` file will be imported into Panoptes in the usual way.
+
+See the `datatable.settings.example` file for a set of example settings that match the `data` file created by this plugin.
 
 
 Error Messages
@@ -30,4 +32,4 @@ Error Messages
 ```
 Error: No JSON object could be decoded
 ```
-A failed attempt to authenticate (a bad `userId` or `password`) when requesting the `studiesURL` will return a HTML response, rather than the expected JSON.
+A failed attempt to authenticate (a bad `userId` or `password`) when requesting the `studiesURL` will return an HTML response, rather than the expected JSON.
