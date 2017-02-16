@@ -8,7 +8,7 @@ Then install the python packages listed in the `REQUIREMENTS` file into Panoptes
 
 ```bash
 source /path/to/panoptes_virtualenv/bin/activate
-pip install -r ~/path/to/REQUIREMENTS
+pip install -r /path/to/REQUIREMENTS
 deactivate
 ```
 
