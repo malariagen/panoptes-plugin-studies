@@ -24,12 +24,3 @@ In there, create a file named `settings`, containing the settings values for thi
 When Panoptes is run, a file named `data` will be created in the `datatable` directory, according to this plugin's settings. The `data` file will be imported into Panoptes in the usual way.
 
 See the `datatable.settings.example` file for a set of example settings that match the `data` file created by this plugin.
-
-
-Error Messages
-==============
-
-```
-Error: No JSON object could be decoded
-```
-A failed attempt to authenticate (a bad `userId` or `password`) when requesting the `studiesURL` will return an HTML response, rather than the expected JSON.
