@@ -313,7 +313,7 @@ class studyDetails(BasePlugin):
             group = study["group" + group_type]
             for study_person in group:
                 malariagenUID = study_person['malariagenUID']
-                if malariagenUID in people.keys():
+                if malariagenUID in people:
                     person = people[malariagenUID]
                     if malariagenUID in study_people:
                         for p in study_list:
