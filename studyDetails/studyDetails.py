@@ -38,7 +38,7 @@ class studyDetails(BasePlugin):
                                    ('userId', {
                                                  'type': 'Text',
                                                  'description': 'The id used to retrieve the study information from Alfresco',
-                                                 'default': 'pfpopgenExport'
+                                                 'required': True
                                                  }),
                                    ('password', {
                                                  'type': 'Text',
@@ -53,12 +53,12 @@ class studyDetails(BasePlugin):
                                    ('studiesURL', {
                                                  'type': 'Text',
                                                  'description': 'Where to fetch the study descriptions - can usually be left as default',
-                                                 'default': 'https://alfresco.malariagen.net/share/proxy/alfresco/cggh/collaborations'
+                                                 'default': 'https://alfresco.malariagen.net/alfresco/service/cggh/collaborations'
                                                  }),
                                   ('dataset', {
                                                  'type': 'Text',
                                                  'description': 'The name of the dataset',
-                                                 'default': 'pvivax_test'
+                                                 'required': True
                                                  }),
                                   ('datatable', {
                                                  'type': 'Text',
@@ -160,6 +160,9 @@ class studyDetails(BasePlugin):
         
         self._calculationObject.SetInfo('Creating studies data file')
         
+        if len(collaborations["collaborationNodes"]) == 0:
+            self._log("Warning: zero collaborationNodes")
+        
         # Loop through the collaboration nodes (each represents a study)
         for node in collaborations["collaborationNodes"]:
             
@@ -223,8 +226,6 @@ class studyDetails(BasePlugin):
         # create a password manager
         password_mgr = urllib2.HTTPPasswordMgrWithDefaultRealm()
 
-        print str(self._plugin_settings["userId"])
-
         top_level_url = self._plugin_settings["studiesURL"]
         password_mgr.add_password(None, top_level_url, self._plugin_settings["userId"], self._plugin_settings["password"])
         
@@ -238,10 +239,12 @@ class studyDetails(BasePlugin):
         
         json_file = opener.open(json_url)
         
-        print str(json_file.read())
-        
         data = json.load(json_file)
-        
+
+        # TODO: remove
+        print "JSON:"
+        print json.dumps(data, indent=2, sort_keys=True)
+
         json_file.close()
         
         return data
