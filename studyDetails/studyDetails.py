@@ -6,7 +6,6 @@ from collections import OrderedDict
 import urllib2
 import os
 import json
-from jinja2 import Template
 from responders.importer.BasePlugin import BasePlugin
 
     
@@ -60,41 +59,20 @@ class studyDetails(BasePlugin):
                                                  'description': 'The name of the dataset',
                                                  'required': True
                                                  }),
-                                  ('datatable', {
+                                  ('studies_datatable', {
                                                  'type': 'Text',
-                                                 'description': 'The name of the data table where the output will be written',
+                                                 'description': 'The name of the data table where the study records will be written',
                                                  'default': 'studies'
                                                  }),
-                                   ('userTemplate', {
+                                  ('study_people_datatable', {
                                                  'type': 'Text',
-                                                 'description': 'jinja2 template describing how the user information will be output',
-                                                 'default': '''<ul class="people">{% for user in users %}
-    <li class="person"><div class="name">{{user.givenName}} {{user.sn}}</div>
-    <div class="company">{{user.o1}}</div>
-    {% if 'Contact' in user.class %}
-    <div class="email_container"><a href="mailto:{{user.mail}}"><span class="fa fa-envelope"></span><span class="email">{{user.mail}}</span></a></div>
-    {% endif %}
-    </li>
-  {% endfor %}</ul>'''
+                                                 'description': 'The name of the data table where the people records associated with each study will be written',
+                                                 'default': 'study_people'
                                                  }),
-                                   ('publicationsTemplate', {
+                                  ('study_publications_datatable', {
                                                  'type': 'Text',
-                                                 'description': 'jinja2 template describing how the publication information will be output',
-                                                 'default': '''
-<ul class="publications">
-            
-    {% for publication in publications %}
-        <li class="publication">
-            <span class="citation">{{publication.citation}}</span>
-            <dl>
-                <dt>DOI</dt><dd><a href="http://dx.doi.org/{{publication.doi}}">{{publication.doi}}</a></dd>
-                <dt>PMID</dt><dd><a href="http://www.ncbi.nlm.nih.gov/pubmed/{{publication.pmid}}">{{publication.pmid}}</a></dd>
-            </dl>
-        </li>
-    {% endfor %}
-            
-</ul>
-                                                 '''
+                                                 'description': 'The name of the data table where the publication records associated with each study will be written',
+                                                 'default': 'study_publications'
                                                  }),
                                    ('peopleTypes', {
                                                  'type': 'List',
@@ -106,30 +84,58 @@ class studyDetails(BasePlugin):
 
         
     def run(self):
-                    
-        studies_datatable_path =  os.path.join(self._config.getSourceDataDir(), "datasets", self._plugin_settings["dataset"], "datatables", self._plugin_settings["datatable"])
+        
+        # Determine the paths to the datatable directories.
+        datatables_path = os.path.join(self._config.getSourceDataDir(), "datasets", self._plugin_settings["dataset"], "datatables")
+        studies_datatable_path =  os.path.join(datatables_path, self._plugin_settings["studies_datatable"])
+        study_people_datatable_path =  os.path.join(datatables_path, self._plugin_settings["study_people_datatable"])
+        study_publications_datatable_path =  os.path.join(datatables_path, self._plugin_settings["study_publications_datatable"])
     
+        # Create the datatable directories, if they don't already exist.
         if os.path.isdir(studies_datatable_path) != True:
-            sys.stdout.write("Making the data directory, i.e. " + studies_datatable_path + '\n')
+            sys.stdout.write("Making the studies datatable directory, i.e. " + studies_datatable_path + '\n')
             os.makedirs(studies_datatable_path)
+        if os.path.isdir(study_people_datatable_path) != True:
+            sys.stdout.write("Making the study_people datatable directory, i.e. " + study_people_datatable_path + '\n')
+            os.makedirs(study_people_datatable_path)
+        if os.path.isdir(study_publications_datatable_path) != True:
+            sys.stdout.write("Making the study_publications datatable directory, i.e. " + study_publications_datatable_path + '\n')
+            os.makedirs(study_publications_datatable_path)
     
         # Only process studies that are associated with a particular project
         filter_by_project_name = self._plugin_settings["project"]
         
-        # Specify the CSV file separators and file path
+        # Specify the CSV file item separators.
         csv_value_separator = "\t"
         csv_row_separator = "\n"
-        csv_file_path = os.path.join(studies_datatable_path, "data")
+        csv_list_separator = "; "
         
-        # Bail out if the file already exists.
-        if os.path.isfile(csv_file_path) == True:
-            print("Warning: Overwriting file: " + csv_file_path)
+        # Determine the paths to the data files.
+        studies_csv_file_path = os.path.join(studies_datatable_path, "data")
+        study_people_csv_file_path = os.path.join(study_people_datatable_path, "data")
+        study_publications_csv_file_path = os.path.join(study_publications_datatable_path, "data")
         
-        # Open the CSV file for writing
-        csv_file = open(csv_file_path, 'w')
+        # Print a warning if any of the data files already exist.
+        if os.path.isfile(studies_csv_file_path) == True:
+            print("Warning: Overwriting file: " + studies_csv_file_path)
+        if os.path.isfile(study_people_csv_file_path) == True:
+            print("Warning: Overwriting file: " + study_people_csv_file_path)
+        if os.path.isfile(study_publications_csv_file_path) == True:
+            print("Warning: Overwriting file: " + study_publications_csv_file_path)
         
-        # Append the heading line
-        csv_file.write(csv_value_separator.join(["Study_number", "webTitle", "description", "publications", "people"]) + csv_row_separator)
+        # Open the CSV files for writing.
+        studies_csv_file = open(studies_csv_file_path, 'w')
+        study_people_csv_file = open(study_people_csv_file_path, 'w')
+        study_publications_csv_file = open(study_publications_csv_file_path, 'w')
+        
+        # Specify which fields to include and their order.
+        study_people_fields = ["jobTitle1", "jobTitle2", "jobTitle3", "uid", "researchGateURL", "scholarURL", "twitterURL", "malariagenUID", "oProfile1", "oProfile2", "oProfile3", "ORCID", "sn", "mail", "givenName", "o1", "o2", "o3"]
+        study_publications_fields = ["doi", "name", "title", "citation", "pmid"]
+        
+        # Append the heading lines.
+        studies_csv_file.write(csv_value_separator.join(["Study_number", "webTitle", "description"]) + csv_row_separator)
+        study_people_csv_file.write(csv_value_separator.join(["Study_number"] + study_people_fields) + csv_row_separator)
+        study_publications_csv_file.write(csv_value_separator.join(["Study_number"] + study_publications_fields) + csv_row_separator)
         
         # Load the JSON into a Python object
         collaborations = self.fetchDetails()
@@ -164,10 +170,10 @@ class studyDetails(BasePlugin):
             self._log("Warning: zero collaborationNodes")
         
         # Loop through the collaboration nodes (each represents a study)
-        for node in collaborations["collaborationNodes"]:
+        for study in collaborations["collaborationNodes"]:
             
             # Get the list of projects
-            projects = node["projects"]
+            projects = study["projects"]
             
             # See if this study is in the project we want
             # by looking through the list of associated project names.
@@ -185,36 +191,57 @@ class studyDetails(BasePlugin):
                 continue
             
             # Compose the study row, which will be appended to the CSV file
-            # Study_number    webTitle    description    publications    people
+            # Study_number    webTitle    description
             
-            Study_number = node['name'].split('-')[0].replace(csv_value_separator, "")
+            Study_number = study['name'].split('-')[0].replace(csv_value_separator, "")
             
             study_row = []
             study_row.append(Study_number)
-            if node["webTitleApproved"] == "false":
-                self._log("Warning: webTitle not approved for:" + node['name'])
-            study_row.append(node["webTitle"].replace(csv_value_separator, ""))
+            if study["webTitleApproved"] == "false":
+                self._log("Warning: webTitle not approved for:" + study['name'])
+            study_row.append(study["webTitle"].replace(csv_value_separator, ""))
             
-            if node["descriptionApproved"] == "false":
-                self._log("Warning: description not approved for:" + node['name'])
-            study_row.append(node["description"].replace(csv_value_separator, ""))
+            if study["descriptionApproved"] == "false":
+                self._log("Warning: description not approved for:" + study['name'])
+            study_row.append(study["description"].replace(csv_value_separator, ""))
             
-            template = Template(self._plugin_settings["publicationsTemplate"])
-            publications_html = template.render(publications = node["publications"])
-            study_row.append(publications_html.replace(csv_value_separator, ""))
+            study_people = self.study_people(people, study)
             
-            template = Template(self._plugin_settings["userTemplate"])
-            study_people = self.study_people(people, node)
-            people_html = template.render(users = study_people)
-            study_row.append(people_html.replace(csv_value_separator, ""))
-            
+            for study_person in study_people:
+                study_person_values = []
+                study_person_values.append(Study_number)
+                for study_person_field in study_people_fields:
+                    study_person_field_value = ''
+                    if study_person_field in study_person:
+                        if isinstance(study_person[study_person_field], basestring):
+                            study_person_field_value = study_person[study_person_field]
+                        elif isinstance(study_person[study_person_field], (list, tuple)):
+                            study_person_field_value = csv_list_separator.join(study_person[study_person_field])
+                    study_person_values.append(study_person_field_value)
+                # Write the study_person_values to the CSV file
+                study_people_csv_file.write(csv_value_separator.join(study_person_values).encode('ascii', 'xmlcharrefreplace').encode('latin-1').replace("\n", " ").replace("\r", " ") + csv_row_separator)
+
+            for study_publication in study["publications"]:
+                study_publication_values = []
+                study_publication_values.append(Study_number)
+                for study_publication_field in study_publications_fields:
+                    study_publication_field_value = ''
+                    if study_publication_field in study_publication:
+                        if isinstance(study_publication[study_publication_field], basestring):
+                            study_publication_field_value = study_publication[study_publication_field]
+                        elif isinstance(study_publication[study_publication_field], (list, tuple)):
+                            study_publication_field_value = csv_list_separator.join(study_publication[study_publication_field])
+                    study_publication_values.append(study_publication_field_value)
+                # Write the study_publication_values to the CSV file
+                study_publications_csv_file.write(csv_value_separator.join(study_publication_values).encode('ascii', 'xmlcharrefreplace').encode('latin-1').replace("\n", " ").replace("\r", " ") + csv_row_separator)
+                
             # Write the study to the CSV file
-            csv_file.write(csv_value_separator.join(study_row).encode('ascii', 'xmlcharrefreplace').encode('latin-1').replace("\n", " ").replace("\r", " ") + csv_row_separator)
+            studies_csv_file.write(csv_value_separator.join(study_row).encode('ascii', 'xmlcharrefreplace').encode('latin-1').replace("\n", " ").replace("\r", " ") + csv_row_separator)
         
         
         
         # Close the CSV file
-        csv_file.close()
+        studies_csv_file.close()
 
 
 
@@ -241,9 +268,7 @@ class studyDetails(BasePlugin):
         
         data = json.load(json_file)
 
-        # TODO: remove
-        print "JSON:"
-        print json.dumps(data, indent=2, sort_keys=True)
+        #print json.dumps(data, indent=2, sort_keys=True)
 
         json_file.close()
         
