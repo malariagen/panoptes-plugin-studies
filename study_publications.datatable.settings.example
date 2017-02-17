@@ -1,0 +1,16 @@
+nameSingle: publication
+namePlural: publications
+primKey: pmid
+properties:
+- id: Study_number
+  dataType: Text
+- id: doi
+  dataType: Text
+- id: name
+  dataType: Text
+- id: title
+  dataType: Text
+- id: citation
+  dataType: Text
+- id: pmid
+  dataType: Text
