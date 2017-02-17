@@ -267,8 +267,18 @@ class studyDetails(BasePlugin):
             Study_number = self.getStudyNumber(parentStudy['name'], csv_value_separator)
             for substudy in substudiesByParentName[substudyParentName]:
               study_people = self.study_people(people, substudy)
-              added_people = self.writeRelatedRecords(study_people, Study_number, self._plugin_settings["study_people_fields"], study_people_csv_file, csv_list_separator, csv_row_separator, csv_value_separator, self._plugin_settings["study_people_key_field"])
-              added_publications = self.writeRelatedRecords(substudy["publications"], Study_number, self._plugin_settings["study_publications_fields"], study_publications_csv_file, csv_list_separator, csv_row_separator, csv_value_separator, self._plugin_settings["study_publications_key_field"])
+              new_study_people = []
+              new_study_publications = []
+              for study_person in study_people:
+                if study_person[self._plugin_settings["study_people_key_field"]] not in personIdsByParentName[substudyParentName]:
+                  new_study_people.append(study_person)
+              for study_publication in substudy["publications"]:
+                if study_publication[self._plugin_settings["study_publication_key_field"]] not in publicationIdsByParentName[substudyParentName]:
+                  new_study_publications.append(study_publication)
+              if new_study_people:
+                added_people = self.writeRelatedRecords(new_study_people, Study_number, self._plugin_settings["study_people_fields"], study_people_csv_file, csv_list_separator, csv_row_separator, csv_value_separator, self._plugin_settings["study_people_key_field"])
+              if new_study_publications:
+                added_publications = self.writeRelatedRecords(new_study_publications, Study_number, self._plugin_settings["study_publications_fields"], study_publications_csv_file, csv_list_separator, csv_row_separator, csv_value_separator, self._plugin_settings["study_publications_key_field"])
 
         # Close the CSV file
         studies_csv_file.close()
