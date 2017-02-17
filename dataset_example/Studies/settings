@@ -1,0 +1,6 @@
+name: Studies
+
+dataTables:
+- studies
+- study_people
+- study_publications
