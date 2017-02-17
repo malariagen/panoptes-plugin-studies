@@ -74,6 +74,16 @@ class studyDetails(BasePlugin):
                                                  'description': 'The name of the data table where the publication records associated with each study will be written',
                                                  'default': 'study_publications'
                                                  }),
+                                   ('study_people_fields', {
+                                                 'type': 'List',
+                                                 'description': 'Which people fields to include in the study_people_datatable, in the same order. The field names will need to match both LDAP and the datatable settings.',
+                                                 'default': ["jobTitle1", "jobTitle2", "jobTitle3", "uid", "researchGateURL", "scholarURL", "twitterURL", "malariagenUID", "oProfile1", "oProfile2", "oProfile3", "ORCID", "sn", "mail", "givenName", "o1", "o2", "o3"]
+                                                 }),
+                                   ('study_publications_fields', {
+                                                 'type': 'List',
+                                                 'description': 'Which publication fields to include in the study_publications_datatable, in the same order. The field names will need to match both Alfresco and the datatable settings.',
+                                                 'default': ["doi", "name", "title", "citation", "pmid"]
+                                                 }),
                                    ('peopleTypes', {
                                                  'type': 'List',
                                                  'description': 'Which user categories to include in the output - will be done in order',
@@ -129,8 +139,8 @@ class studyDetails(BasePlugin):
         study_publications_csv_file = open(study_publications_csv_file_path, 'w')
         
         # Specify which fields to include and their order.
-        study_people_fields = ["jobTitle1", "jobTitle2", "jobTitle3", "uid", "researchGateURL", "scholarURL", "twitterURL", "malariagenUID", "oProfile1", "oProfile2", "oProfile3", "ORCID", "sn", "mail", "givenName", "o1", "o2", "o3"]
-        study_publications_fields = ["doi", "name", "title", "citation", "pmid"]
+        study_people_fields = self._plugin_settings["study_people_fields"]
+        study_publications_fields = self._plugin_settings["study_publications_fields"]
         
         # Append the heading lines.
         studies_csv_file.write(csv_value_separator.join(["Study_number", "webTitle", "description"]) + csv_row_separator)
