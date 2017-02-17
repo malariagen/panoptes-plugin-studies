@@ -1,8 +1,0 @@
-plugin: studyDetails
-userId: batman@example.com
-password: ironmansocks
-dataset: Studies
-project: Wonder Woman Web App
-ldapServer: ldaps://the.bat.cave:636
-userDN: cn=007,ou=superusers,ou=heroes,dc=justiceleague,dc=marvel
-ldapPassword: ironmansocks
