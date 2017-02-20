@@ -262,7 +262,6 @@ class studyDetails(BasePlugin):
 
         if self._plugin_settings["webStudyHandling"] == "merge":
           for substudyParentName in substudiesByParentName:
-            print "substudyParentName: " + substudyParentName
             parentStudy = studiesByName[substudyParentName]
             Study_number = self.getStudyNumber(parentStudy['name'], csv_value_separator)
             for substudy in substudiesByParentName[substudyParentName]:
