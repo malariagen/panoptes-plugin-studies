@@ -112,12 +112,14 @@ class studyDetails(BasePlugin):
                                    ('samplesTable', {
                                                  'type': 'Text',
                                                  'description': "Table ID of the samples table to be used for filtering studies and rewriting study ids",
-                                                 'default': "",
+                                                 'default': None,
+                                                 'required': False
                                                  }),
                                    ('samplesStudyColumn', {
                                                 'type': 'Text',
                                                 'description': "Column ID that contains study IDs in the samples table",
-                                                'default': "",
+                                                'default': 'Study_number',
+                                                'required': False
                                                 }),
                                    ))
         return settingsDef
@@ -217,7 +219,7 @@ class studyDetails(BasePlugin):
 
         #Rewrite the samples table based on the "webStudy" field
         wanted_studies = None
-        if samples_table:
+        if samples_table is not None:
             reported = {}
             wanted_studies = set()
             samples_table_path = join(datatables_path, samples_table, 'data')
@@ -228,7 +230,7 @@ class studyDetails(BasePlugin):
                 rows = list(reader)
                 for row in rows:
                     name = row[samples_study_column]
-                    if studiesByName[name] and 'webStudy' in studiesByName[name]:
+                    if name in studiesByName and 'webStudy' in studiesByName[name]:
                         if name not in reported:
                             print(name +' will be shown as '+ studiesByName[name]['webStudy']['name'])
                             reported[name] = True
