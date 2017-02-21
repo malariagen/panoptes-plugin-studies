@@ -17,7 +17,7 @@ Usage
 
 Install this plugin either by setting `PLUGINPATH` in the Panoptes config or by copying the `studyDetails` directory to the `server/responders/importer/plugins` directory
 
-Create a directory under <<dataset>>/pre e.g. <<dataset>>/pre/studies
+Create a directory in `datasets/yourDataset/pre/` e.g. `datasets/myDataset/pre/studies/`
 
 In there, create a file named `settings`, containing the settings values for this plugin. See the example `settings` file in `dataset_example/Studies/datatables/pre/studies/` and the `getSettings` method in `studyDetails.py` for clues.
 
