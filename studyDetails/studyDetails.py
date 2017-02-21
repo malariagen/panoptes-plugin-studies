@@ -1,11 +1,15 @@
 from __future__ import unicode_literals
-import ldap, ldap.sasl
-import unicodecsv
-import sys
-from collections import OrderedDict
-import urllib2
-import os
+
+import csv
 import json
+import os
+import sys
+import urllib2
+from collections import OrderedDict
+from os.path import join, isdir, isfile
+
+import ldap
+import ldap.sasl
 from responders.importer.BasePlugin import BasePlugin
 
 
@@ -54,22 +58,22 @@ class studyDetails(BasePlugin):
                                                  'description': 'Where to fetch the study descriptions - can usually be left as default',
                                                  'default': 'https://alfresco.malariagen.net/alfresco/service/cggh/collaborations'
                                                  }),
-                                  ('dataset', {
+                                   ('dataset', {
                                                  'type': 'Text',
                                                  'description': 'The name of the dataset',
                                                  'required': True
                                                  }),
-                                  ('studies_datatable', {
+                                   ('studies_datatable', {
                                                  'type': 'Text',
                                                  'description': 'The name of the data table where the study records will be written',
                                                  'default': 'studies'
                                                  }),
-                                  ('study_people_datatable', {
+                                   ('study_people_datatable', {
                                                  'type': 'Text',
                                                  'description': 'The name of the data table where the people records associated with each study will be written',
                                                  'default': 'study_people'
                                                  }),
-                                  ('study_publications_datatable', {
+                                   ('study_publications_datatable', {
                                                  'type': 'Text',
                                                  'description': 'The name of the data table where the publication records associated with each study will be written',
                                                  'default': 'study_publications'
@@ -104,7 +108,19 @@ class studyDetails(BasePlugin):
                                                  'type': 'List',
                                                  'description': 'Which user categories to include in the output - will be done in order',
                                                  'default': ['Contact', 'Public']
-                                                 })
+                                                 }),
+                                   ('samplesTable', {
+                                                 'type': 'Text',
+                                                 'description': "Table ID of the samples table to be used for filtering studies and rewriting study ids",
+                                                 'default': None,
+                                                 'required': False
+                                                 }),
+                                   ('samplesStudyColumn', {
+                                                'type': 'Text',
+                                                'description': "Column ID that contains study IDs in the samples table",
+                                                'default': 'Study_number',
+                                                'required': False
+                                                }),
                                    ))
         return settingsDef
 
@@ -112,24 +128,26 @@ class studyDetails(BasePlugin):
     def run(self):
 
         # Determine the paths to the datatable directories.
-        datatables_path = os.path.join(self._config.getSourceDataDir(), "datasets", self._plugin_settings["dataset"], "datatables")
-        studies_datatable_path =  os.path.join(datatables_path, self._plugin_settings["studies_datatable"])
-        study_people_datatable_path =  os.path.join(datatables_path, self._plugin_settings["study_people_datatable"])
-        study_publications_datatable_path =  os.path.join(datatables_path, self._plugin_settings["study_publications_datatable"])
+        datatables_path = join(self._config.getSourceDataDir(), "datasets", self._plugin_settings["dataset"], "datatables")
+        studies_datatable_path = join(datatables_path, self._plugin_settings["studies_datatable"])
+        study_people_datatable_path = join(datatables_path, self._plugin_settings["study_people_datatable"])
+        study_publications_datatable_path = join(datatables_path, self._plugin_settings["study_publications_datatable"])
 
         # Create the datatable directories, if they don't already exist.
-        if os.path.isdir(studies_datatable_path) != True:
+        if isdir(studies_datatable_path) != True:
             sys.stdout.write("Making the studies datatable directory, i.e. " + studies_datatable_path + '\n')
             os.makedirs(studies_datatable_path)
-        if os.path.isdir(study_people_datatable_path) != True:
+        if isdir(study_people_datatable_path) != True:
             sys.stdout.write("Making the study_people datatable directory, i.e. " + study_people_datatable_path + '\n')
             os.makedirs(study_people_datatable_path)
-        if os.path.isdir(study_publications_datatable_path) != True:
+        if isdir(study_publications_datatable_path) != True:
             sys.stdout.write("Making the study_publications datatable directory, i.e. " + study_publications_datatable_path + '\n')
             os.makedirs(study_publications_datatable_path)
 
-        # Only process studies that are associated with a particular project
+        # Only process studies that are associated with a particular project or samples list
         filter_by_project_name = self._plugin_settings["project"]
+        samples_table = self._plugin_settings['samplesTable']
+        samples_study_column = self._plugin_settings['samplesStudyColumn']
 
         # Specify the CSV file item separators.
         csv_value_separator = "\t"
@@ -137,16 +155,16 @@ class studyDetails(BasePlugin):
         csv_list_separator = "; "
 
         # Determine the paths to the data files.
-        studies_csv_file_path = os.path.join(studies_datatable_path, "data")
-        study_people_csv_file_path = os.path.join(study_people_datatable_path, "data")
-        study_publications_csv_file_path = os.path.join(study_publications_datatable_path, "data")
+        studies_csv_file_path = join(studies_datatable_path, "data")
+        study_people_csv_file_path = join(study_people_datatable_path, "data")
+        study_publications_csv_file_path = join(study_publications_datatable_path, "data")
 
         # Print a warning if any of the data files already exist.
-        if os.path.isfile(studies_csv_file_path) == True:
+        if isfile(studies_csv_file_path) == True:
             print("Warning: Overwriting file: " + studies_csv_file_path)
-        if os.path.isfile(study_people_csv_file_path) == True:
+        if isfile(study_people_csv_file_path) == True:
             print("Warning: Overwriting file: " + study_people_csv_file_path)
-        if os.path.isfile(study_publications_csv_file_path) == True:
+        if isfile(study_publications_csv_file_path) == True:
             print("Warning: Overwriting file: " + study_publications_csv_file_path)
 
         # Open the CSV files for writing.
@@ -191,11 +209,47 @@ class studyDetails(BasePlugin):
         if len(collaborations["collaborationNodes"]) == 0:
             self._log("Warning: zero collaborationNodes")
 
+        # Collect the studies by name, to facilitate a subsequent parse.
+        studiesByName = {}
+        for study in collaborations["collaborationNodes"]:
+          if study["name"] not in studiesByName:
+            studiesByName[study["name"]] = study
+          else:
+            self._log("Warning: duplicate study name:" + study['name'])
+
+        #Rewrite the samples table based on the "webStudy" field
+        wanted_studies = None
+        if samples_table is not None:
+            reported = {}
+            wanted_studies = set()
+            samples_table_path = join(datatables_path, samples_table, 'data')
+            if isfile(samples_table_path) == True:
+                print("Warning: Overwriting file: " + samples_table_path)
+            with open(samples_table_path) as tsv:
+                reader = csv.DictReader(tsv, delimiter=str(csv_value_separator))
+                rows = list(reader)
+                for row in rows:
+                    name = row[samples_study_column]
+                    if name in studiesByName and 'webStudy' in studiesByName[name]:
+                        if name not in reported:
+                            print(name +' will be shown as '+ studiesByName[name]['webStudy']['name'])
+                            reported[name] = True
+                        name = studiesByName[name]['webStudy']['name']
+                    row[samples_study_column + '_short'] = self.getStudyNumber(name, csv_value_separator)
+                    row[samples_study_column] = name
+                    wanted_studies.add(name)
+
+            fieldnames = list(set(reader.fieldnames + [samples_study_column + '_short']))
+            with open(samples_table_path, 'w') as tsv:
+                writer = csv.DictWriter(tsv, fieldnames=fieldnames, delimiter=str(csv_value_separator))
+                writer.writeheader()
+                writer.writerows(rows)
+
+
         ## Loop through the collaboration nodes (each represents a study)
 
         # Collect data for a subsequent parse.
         substudiesByParentName = {}
-        studiesByName = {}
         personIdsByParentName = {}
         publicationIdsByParentName = {}
 
@@ -219,15 +273,10 @@ class studyDetails(BasePlugin):
             if is_in_project != True:
                 continue
 
+            if wanted_studies and study['name'] not in wanted_studies:
+                continue
 
             if self._plugin_settings["webStudyHandling"] != "keep":
-
-              # Collect the studies by name, to facilitate a subsequent parse.
-              if study["name"] not in studiesByName:
-                studiesByName[study["name"]] = study
-              else:
-                self._log("Warning: duplicate study name:" + study['name'])
-
               # Anything with a webStudy is a subset of another study.
               # Collect the substudy and process it in a subsequent parse.
               if "webStudy" in study:
