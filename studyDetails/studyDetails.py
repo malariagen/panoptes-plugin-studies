@@ -216,6 +216,7 @@ class studyDetails(BasePlugin):
             self._log("Warning: duplicate study name:" + study['name'])
 
         #Rewrite the samples table based on the "webStudy" field
+        wanted_studies = None
         if samples_table:
             reported = {}
             wanted_studies = set()
