@@ -121,6 +121,22 @@ class studyDetails(BasePlugin):
                                                 'default': 'Study_number',
                                                 'required': False
                                                 }),
+                                   ('samplesCountryColumn', {
+                                                'type': 'Text',
+                                                'description': "Column ID that contains iso country IDs in the samples table",
+                                                'default': "",
+                                   }),
+                                   ('countriesDatatable', {
+                                                 'type': 'Text',
+                                                 'description': 'The name of the data table where the people records associated with each study will be written',
+                                                 'default': 'countries'
+                                   }),
+                                   ('countriesFields', {
+                                     'type': 'List',
+                                     'description': 'List of field to copy from samples table to country table. Note that only the last country for each iso code sets these so they should be the same for countries with the same iso code',
+                                     'default': []
+                                   }),
+
                                    ))
         return settingsDef
 
@@ -132,22 +148,29 @@ class studyDetails(BasePlugin):
         studies_datatable_path = join(datatables_path, self._plugin_settings["studies_datatable"])
         study_people_datatable_path = join(datatables_path, self._plugin_settings["study_people_datatable"])
         study_publications_datatable_path = join(datatables_path, self._plugin_settings["study_publications_datatable"])
+        countries_datatable_path = join(datatables_path, self._plugin_settings["countriesDatatable"])
 
         # Create the datatable directories, if they don't already exist.
-        if isdir(studies_datatable_path) != True:
+        if not isdir(studies_datatable_path):
             sys.stdout.write("Making the studies datatable directory, i.e. " + studies_datatable_path + '\n')
             os.makedirs(studies_datatable_path)
-        if isdir(study_people_datatable_path) != True:
+        if not isdir(study_people_datatable_path):
             sys.stdout.write("Making the study_people datatable directory, i.e. " + study_people_datatable_path + '\n')
             os.makedirs(study_people_datatable_path)
-        if isdir(study_publications_datatable_path) != True:
+        if not isdir(study_publications_datatable_path):
             sys.stdout.write("Making the study_publications datatable directory, i.e. " + study_publications_datatable_path + '\n')
             os.makedirs(study_publications_datatable_path)
+        if not isdir(countries_datatable_path):
+            sys.stdout.write("Making the countries datatable directory, i.e. " + countries_datatable_path + '\n')
+            os.makedirs(countries_datatable_path)
 
         # Only process studies that are associated with a particular project or samples list
         filter_by_project_name = self._plugin_settings["project"]
         samples_table = self._plugin_settings['samplesTable']
         samples_study_column = self._plugin_settings['samplesStudyColumn']
+
+        samples_country_column = self._plugin_settings['samplesCountryColumn']
+        countries_fields = self._plugin_settings['countriesFields']
 
         # Specify the CSV file item separators.
         csv_value_separator = "\t"
@@ -158,14 +181,17 @@ class studyDetails(BasePlugin):
         studies_csv_file_path = join(studies_datatable_path, "data")
         study_people_csv_file_path = join(study_people_datatable_path, "data")
         study_publications_csv_file_path = join(study_publications_datatable_path, "data")
+        countries_csv_file_path = join(countries_datatable_path, "data")
 
         # Print a warning if any of the data files already exist.
-        if isfile(studies_csv_file_path) == True:
+        if isfile(studies_csv_file_path):
             print("Warning: Overwriting file: " + studies_csv_file_path)
-        if isfile(study_people_csv_file_path) == True:
+        if isfile(study_people_csv_file_path):
             print("Warning: Overwriting file: " + study_people_csv_file_path)
-        if isfile(study_publications_csv_file_path) == True:
+        if isfile(study_publications_csv_file_path):
             print("Warning: Overwriting file: " + study_publications_csv_file_path)
+        if isfile(countries_csv_file_path):
+            print("Warning: Overwriting file: " + countries_csv_file_path)
 
         # Open the CSV files for writing.
         studies_csv_file = open(studies_csv_file_path, 'w')
@@ -173,9 +199,9 @@ class studyDetails(BasePlugin):
         study_publications_csv_file = open(study_publications_csv_file_path, 'w')
 
         # Append the heading lines.
-        studies_csv_file.write(csv_value_separator.join(["Study_number", "webTitle", "description"]) + csv_row_separator)
-        study_people_csv_file.write(csv_value_separator.join(["Study_number"] + self._plugin_settings["study_people_fields"]) + csv_row_separator)
-        study_publications_csv_file.write(csv_value_separator.join(["Study_number"] + self._plugin_settings["study_publications_fields"]) + csv_row_separator)
+        studies_csv_file.write(csv_value_separator.join(["study", "study_number", "webTitle", "description"]) + csv_row_separator)
+        study_people_csv_file.write(csv_value_separator.join(["study"] + self._plugin_settings["study_people_fields"]) + csv_row_separator)
+        study_publications_csv_file.write(csv_value_separator.join(["study"] + self._plugin_settings["study_publications_fields"]) + csv_row_separator)
 
         # Load the JSON into a Python object
         collaborations = self.fetchDetails()
@@ -217,13 +243,14 @@ class studyDetails(BasePlugin):
           else:
             self._log("Warning: duplicate study name:" + study['name'])
 
-        #Rewrite the samples table based on the "webStudy" field
+        #Rewrite the samples table based on the "webStudy" field and to note countries data
+        countryByISO = {}
         wanted_studies = None
-        if samples_table is not None:
+        if samples_table:
             reported = {}
             wanted_studies = set()
             samples_table_path = join(datatables_path, samples_table, 'data')
-            if isfile(samples_table_path) == True:
+            if isfile(samples_table_path):
                 print("Warning: Overwriting file: " + samples_table_path)
             with open(samples_table_path) as tsv:
                 reader = csv.DictReader(tsv, delimiter=str(csv_value_separator))
@@ -238,12 +265,20 @@ class studyDetails(BasePlugin):
                     row[samples_study_column + '_short'] = self.getStudyNumber(name, csv_value_separator)
                     row[samples_study_column] = name
                     wanted_studies.add(name)
+                    if samples_country_column:
+                        countryByISO[row[samples_country_column]] = {column: row[column] for column in countries_fields}
+                        countryByISO[row[samples_country_column]][samples_country_column] = row[samples_country_column]
 
             fieldnames = list(set(reader.fieldnames + [samples_study_column + '_short']))
             with open(samples_table_path, 'w') as tsv:
                 writer = csv.DictWriter(tsv, fieldnames=fieldnames, delimiter=str(csv_value_separator))
                 writer.writeheader()
                 writer.writerows(rows)
+            if samples_country_column:
+                with open(countries_csv_file_path, 'w') as tsv:
+                    writer = csv.DictWriter(tsv, fieldnames=[samples_country_column]+countries_fields, delimiter=str(csv_value_separator))
+                    writer.writeheader()
+                    writer.writerows(countryByISO.values())
 
 
         ## Loop through the collaboration nodes (each represents a study)
@@ -260,21 +295,22 @@ class studyDetails(BasePlugin):
 
             # See if this study is in the project we want
             # by looking through the list of associated project names.
-            is_in_project = False
+            is_in_project = True if filter_by_project_name is None else False
             for project in projects:
 
-                project_name = project["name"];
+                project_name = project["name"]
 
-                if filter_by_project_name is None or project_name == filter_by_project_name:
+                if project_name == filter_by_project_name:
                     is_in_project = True
                     break
 
             # If this study isn't in the project, then skip to the next study.
-            if is_in_project != True:
+            if not is_in_project:
                 continue
 
-            if wanted_studies and study['name'] not in wanted_studies:
+            if wanted_studies is not None and study['name'] not in wanted_studies:
                 continue
+            wanted_studies.remove(study['name'])
 
             if self._plugin_settings["webStudyHandling"] != "keep":
               # Anything with a webStudy is a subset of another study.
@@ -286,12 +322,12 @@ class studyDetails(BasePlugin):
                 continue
 
             # Compose the study row, which will be appended to the CSV file
-            # Study_number    webTitle    description
+            # study	study_number    webTitle    description
 
-            Study_number = self.getStudyNumber(study['name'], csv_value_separator)
+            study_id = study['name']
+            study_number = self.getStudyNumber(study['name'], csv_value_separator)
 
-            study_row = []
-            study_row.append(Study_number)
+            study_row = [study_id, study_number]
             if study["webTitleApproved"] == "false":
                 self._log("Warning: webTitle not approved for:" + study['name'])
             study_row.append(study["webTitle"].replace(csv_value_separator, ""))
@@ -303,17 +339,19 @@ class studyDetails(BasePlugin):
             study_people = self.study_people(people, study)
 
             # Write the related records: people and publications.
-            personIdsByParentName[study['name']] = self.writeRelatedRecords(study_people, Study_number, self._plugin_settings["study_people_fields"], study_people_csv_file, csv_list_separator, csv_row_separator, csv_value_separator, self._plugin_settings["study_people_key_field"])
-            publicationIdsByParentName[study['name']] = self.writeRelatedRecords(study["publications"], Study_number, self._plugin_settings["study_publications_fields"], study_publications_csv_file, csv_list_separator, csv_row_separator, csv_value_separator, self._plugin_settings["study_publications_key_field"])
+            personIdsByParentName[study['name']] = self.writeRelatedRecords(study_people, study_id, self._plugin_settings["study_people_fields"], study_people_csv_file, csv_list_separator, csv_row_separator, csv_value_separator, self._plugin_settings["study_people_key_field"])
+            publicationIdsByParentName[study['name']] = self.writeRelatedRecords(study["publications"], study_id, self._plugin_settings["study_publications_fields"], study_publications_csv_file, csv_list_separator, csv_row_separator, csv_value_separator, self._plugin_settings["study_publications_key_field"])
 
             # Write the study to the CSV file
             studies_csv_file.write(csv_value_separator.join(study_row).encode('ascii', 'xmlcharrefreplace').encode('latin-1').replace("\n", " ").replace("\r", " ") + csv_row_separator)
+        if len(wanted_studies) > 0:
+            raise Exception('These studies were not found', str(wanted_studies))
 
         if self._plugin_settings["webStudyHandling"] == "merge":
           for substudyParentName in substudiesByParentName:
             print "substudyParentName: " + substudyParentName
             parentStudy = studiesByName[substudyParentName]
-            Study_number = self.getStudyNumber(parentStudy['name'], csv_value_separator)
+            study_id = parentStudy['name']
             for substudy in substudiesByParentName[substudyParentName]:
               study_people = self.study_people(people, substudy)
               new_study_people = []
@@ -325,9 +363,9 @@ class studyDetails(BasePlugin):
                 if study_publication[self._plugin_settings["study_publication_key_field"]] not in publicationIdsByParentName[substudyParentName]:
                   new_study_publications.append(study_publication)
               if new_study_people:
-                added_people = self.writeRelatedRecords(new_study_people, Study_number, self._plugin_settings["study_people_fields"], study_people_csv_file, csv_list_separator, csv_row_separator, csv_value_separator, self._plugin_settings["study_people_key_field"])
+                added_people = self.writeRelatedRecords(new_study_people, study_id, self._plugin_settings["study_people_fields"], study_people_csv_file, csv_list_separator, csv_row_separator, csv_value_separator, self._plugin_settings["study_people_key_field"])
               if new_study_publications:
-                added_publications = self.writeRelatedRecords(new_study_publications, Study_number, self._plugin_settings["study_publications_fields"], study_publications_csv_file, csv_list_separator, csv_row_separator, csv_value_separator, self._plugin_settings["study_publications_key_field"])
+                added_publications = self.writeRelatedRecords(new_study_publications, study_id, self._plugin_settings["study_publications_fields"], study_publications_csv_file, csv_list_separator, csv_row_separator, csv_value_separator, self._plugin_settings["study_publications_key_field"])
 
         # Close the CSV file
         studies_csv_file.close()
