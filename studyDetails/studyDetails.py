@@ -12,116 +12,144 @@ import ldap
 import ldap.sasl
 from responders.importer.BasePlugin import BasePlugin
 
+# FIXME: If a setting is required ('required': True) and no value is provided
+# in the settings file, an error occurs despite a default being provided here.
+# An error should only occur if no default has been provided for those required.
+# Workaround: do not set required properties for settings that have defaults.
 
 class studyDetails(BasePlugin):
 
     def getSettings(self):
         settingsDef = OrderedDict((('plugin', {
                                                'type': 'Text',
-                                               'required': True,
-                                               'description': "The name of the plugin class to run",
-                                               'values':  { 'studyDetails': { 'description' : 'The name of the plugin class'} }
+                                               'description': "The name of the plugin class to run.",
+                                               'values':  { 'studyDetails': { 'description' : 'The name of the plugin class'} },
+                                               'required': True
                                                }),
+
                                    ('ldapServer', {
                                                  'type': 'Text',
-                                                 'required': False,
-                                                 'description': 'If this is none then no people information will be retrieved from LDAP and included in the output',
-                                                 'default': None
-                                                 }),
-                                   ('userDN', {
-                                                 'type': 'Text',
-                                                 'description': 'The DN of the user to connect to LDAP - this user needs permission to read people records',
-                                                 'required': False
-                                                 }),
-                                   ('ldapPassword', {
-                                                 'type': 'Text',
-                                                 'description': 'The LDAP password',
-                                                 'required': False
-                                                 }),
-                                   ('userId', {
-                                                 'type': 'Text',
-                                                 'description': 'The id used to retrieve the study information from Alfresco',
+                                                 'description': 'The URI of the LDAP server, using the ldap:// or ldaps:// scheme.',
                                                  'required': True
                                                  }),
-                                   ('password', {
+                                   ('ldapUserDN', {
                                                  'type': 'Text',
-                                                 'description': 'The password associated with userId'
+                                                 'description': 'The LDAP DN of the user for the LDAP connection. This user will require the appropriate access permissions to read people records.',
+                                                 'required': True
                                                  }),
-                                   ('project', {
+                                   ('ldapUserPassword', {
                                                  'type': 'Text',
-                                                 'description': 'The name of a project can be included to restrict which studies are loaded - should usually be set',
-                                                 'required': False,
+                                                 'description': 'The password for the LDAP user specified by ldapUserDN.',
+                                                 'required': True
+                                                 }),
+
+                                   ('alfrescoUserId', {
+                                                 'type': 'Text',
+                                                 'description': 'The Alfresco user id for the Alfresco login, used to retrieve the study information from Alfresco.',
+                                                 'required': True
+                                                 }),
+                                   ('alfrescoUserPassword', {
+                                                 'type': 'Text',
+                                                 'description': 'The password for the Alfresco user specified by alfrescoUserId.',
+                                                 'required': True
+                                                 }),
+                                   ('alfrescoStudiesURL', {
+                                                 'type': 'Text',
+                                                 'description': 'The URL in Alfresco to fetch the study descriptions from.',
+                                                 'default': 'https://alfresco.malariagen.net/alfresco/service/cggh/collaborations',
+                                                 }),
+                                   ('alfrescoProject', {
+                                                 'type': 'Text',
+                                                 'description': 'The name of the Alfresco project to restrict studies by. When this defaults to None, all studies accessible to alfrescoUserId will be processed.',
                                                  'default': None
                                                  }),
-                                   ('studiesURL', {
-                                                 'type': 'Text',
-                                                 'description': 'Where to fetch the study descriptions - can usually be left as default',
-                                                 'default': 'https://alfresco.malariagen.net/alfresco/service/cggh/collaborations'
+                                   ('alfrescoPeopleGroups', {
+                                                 'type': 'List',
+                                                 'description': 'The list of user groups from Alfresco to include in the studyPeopleDatatable, in the same order.',
+                                                 'default': ['Contact', 'Public'],
+                                                 'required': False
                                                  }),
+
+                                   ('alfrescoWebStudyHandling', {
+                                                 'type': 'Text',
+                                                 'description': 'The option for handling studies that have a webStudy link in Alfresco, which are subsets of another specified study.',
+                                                 'default': 'ignore',
+                                                 'values':  ['ignore', 'keep', 'merge']
+                                                 }),
+
+
                                    ('dataset', {
                                                  'type': 'Text',
-                                                 'description': 'The name of the dataset',
+                                                 'description': 'The name of the Panoptes dataset',
                                                  'required': True
                                                  }),
-                                   ('studies_datatable', {
+                                   ('studiesDatatable', {
                                                  'type': 'Text',
-                                                 'description': 'The name of the data table where the study records will be written',
-                                                 'default': 'studies'
+                                                 'description': 'The name of the Panoptes datatable where the Alfresco study records will be written.',
+                                                 'default': 'studies',
                                                  }),
-                                   ('study_people_datatable', {
+                                   ('studyPeopleDatatable', {
                                                  'type': 'Text',
-                                                 'description': 'The name of the data table where the people records associated with each study will be written',
-                                                 'default': 'study_people'
+                                                 'description': 'The name of the Panoptes datatable where the people records associated with each Alfresco study will be written.',
+                                                 'default': 'study_people',
                                                  }),
-                                   ('study_publications_datatable', {
+                                   ('studyPublicationsDatatable', {
                                                  'type': 'Text',
-                                                 'description': 'The name of the data table where the publication records associated with each study will be written',
-                                                 'default': 'study_publications'
+                                                 'description': 'The name of the Panoptes datatable where the publication records associated with each Alfresco study will be written.',
+                                                 'default': 'study_publications',
                                                  }),
-                                   ('study_people_fields', {
-                                                 'type': 'List',
-                                                 'description': 'Which people fields to include in the study_people_datatable, in the same order. The field names will need to match both LDAP and the datatable settings.',
-                                                 'default': ["jobTitle1", "jobTitle2", "jobTitle3", "uid", "researchGateURL", "scholarURL", "twitterURL", "malariagenUID", "oProfile1", "oProfile2", "oProfile3", "ORCID", "sn", "mail", "givenName", "o1", "o2", "o3"]
-                                                 }),
-                                   ('study_publications_fields', {
-                                                 'type': 'List',
-                                                 'description': 'Which publication fields to include in the study_publications_datatable, in the same order. The field names will need to match both Alfresco and the datatable settings.',
-                                                 'default': ["doi", "name", "title", "citation", "pmid"]
-                                                 }),
-                                   ('study_people_key_field', {
+                                   ('studySamplesDatatable', {
                                                  'type': 'Text',
-                                                 'description': 'The uniquely identifying field for a person related to a study.',
-                                                 'default': "uid"
-                                                 }),
-                                   ('study_publications_key_field', {
-                                                 'type': 'Text',
-                                                 'description': 'The uniquely identifying field for a publication related to a study.',
-                                                 'default': "pmid"
-                                                 }),
-                                   ('webStudyHandling', {
-                                                 'type': 'Text',
-                                                 'description': "What to do with studies that have a webStudy link, i.e. are a subset of another specified study",
-                                                 'default': "ignore",
-                                                 'values':  ["ignore", "keep", "merge"]
-                                                 }),
-                                   ('peopleTypes', {
-                                                 'type': 'List',
-                                                 'description': 'Which user categories to include in the output - will be done in order',
-                                                 'default': ['Contact', 'Public']
-                                                 }),
-                                   ('samplesTable', {
-                                                 'type': 'Text',
-                                                 'description': "Table ID of the samples table to be used for filtering studies and rewriting study ids",
+                                                 'description': "The name of the Panoptes datatable from which the sample records associated with each Alfresco study will be read. Only the Alfresco studies that correspond to these records will be used. These records are also used to rewrite the study ids.",
                                                  'default': None,
                                                  'required': False
                                                  }),
-                                   ('samplesStudyColumn', {
+                                   ('sampleCountriesDatatable', {
+                                                 'type': 'Text',
+                                                 'description': 'The name of the Panoptes datatable where the sampleCountriesFields from studySamplesDatatable will be written.',
+                                                 'default': 'sample_countries',
+                                                 }),
+
+                                   ('studyPeopleFields', {
+                                                 'type': 'List',
+                                                 'description': 'The list of people fields from Alfresco to include in the studyPeopleDatatable, in the same order. The field names will need to match both the data from LDAP and the settings file for the studyPeopleDatatable.',
+                                                 'default': ['jobTitle1', 'jobTitle2', 'jobTitle3', 'uid', 'researchGateURL', 'scholarURL', 'twitterURL', 'malariagenUID', 'oProfile1', 'oProfile2', 'oProfile3', 'ORCID', 'sn', 'mail', 'givenName', 'o1', 'o2', 'o3'],
+                                                 }),
+                                   ('studyPublicationsFields', {
+                                                 'type': 'List',
+                                                 'description': 'The list of  publication fields from Alfresco to include in the studyPublicationsDatatable, in the same order. The field names will need to match both the data from Alfresco and the settings file for the studyPublicationsDatatable.',
+                                                 'default': ['doi', 'name', 'title', 'citation', 'pmid'],
+                                                 }),
+                                   ('sampleCountriesFields', {
+                                                 'type': 'List',
+                                                 'description': 'The list of country fields from studySamplesDatatable to copy to sampleCountriesDatatable. Since there are multiple sample records for each country, the values of each field from the last sample record are used. Therefore, ensure that the values for these country fields are the same for all records with the same samplesCountryColumn value.',
+                                                 'default': ['CountryCode', 'CountryName'],
+                                                 }),
+
+                                   ('studyPeoplePersonField', {
+                                                 'type': 'Text',
+                                                 'description': 'The uniquely identifying field for a person in the studyPeopleDatatable.',
+                                                 'default': 'uid',
+                                                 }),
+                                   ('studyPublicationsPublicationField', {
+                                                 'type': 'Text',
+                                                 'description': 'The uniquely identifying field for a publication in the studyPublicationsDatatable.',
+                                                 'default': 'pmid',
+                                                 }),
+                                   ('studySamplesStudyField', {
                                                 'type': 'Text',
-                                                'description': "Column ID that contains study IDs in the samples table",
-                                                'default': 'Study_number',
+                                                'description': 'The uniquely identifying field for a study in the studySamplesDatatable.',
+                                                'default': 'StudyCode',
                                                 'required': False
                                                 }),
-                                   ))
+                                   ('studySamplesCountryField', {
+                                                'type': 'Text',
+                                                'description': 'The uniquely identifying field for a country in the studySamplesDatatable.',
+                                                'default': 'CountryCode',
+                                                'required': False
+                                                })
+        ))
+
         return settingsDef
 
 
@@ -129,25 +157,32 @@ class studyDetails(BasePlugin):
 
         # Determine the paths to the datatable directories.
         datatables_path = join(self._config.getSourceDataDir(), "datasets", self._plugin_settings["dataset"], "datatables")
-        studies_datatable_path = join(datatables_path, self._plugin_settings["studies_datatable"])
-        study_people_datatable_path = join(datatables_path, self._plugin_settings["study_people_datatable"])
-        study_publications_datatable_path = join(datatables_path, self._plugin_settings["study_publications_datatable"])
-
-        # Create the datatable directories, if they don't already exist.
-        if isdir(studies_datatable_path) != True:
-            sys.stdout.write("Making the studies datatable directory, i.e. " + studies_datatable_path + '\n')
-            os.makedirs(studies_datatable_path)
-        if isdir(study_people_datatable_path) != True:
-            sys.stdout.write("Making the study_people datatable directory, i.e. " + study_people_datatable_path + '\n')
-            os.makedirs(study_people_datatable_path)
-        if isdir(study_publications_datatable_path) != True:
-            sys.stdout.write("Making the study_publications datatable directory, i.e. " + study_publications_datatable_path + '\n')
-            os.makedirs(study_publications_datatable_path)
+        studies_datatable_path = join(datatables_path, self._plugin_settings["studiesDatatable"])
+        study_people_datatable_path = join(datatables_path, self._plugin_settings["studyPeopleDatatable"])
+        study_publications_datatable_path = join(datatables_path, self._plugin_settings["studyPublicationsDatatable"])
+        sample_countries_datatable_path = join(datatables_path, self._plugin_settings["sampleCountriesDatatable"])
 
         # Only process studies that are associated with a particular project or samples list
-        filter_by_project_name = self._plugin_settings["project"]
-        samples_table = self._plugin_settings['samplesTable']
-        samples_study_column = self._plugin_settings['samplesStudyColumn']
+        filter_by_project_name = self._plugin_settings["alfrescoProject"]
+        samples_table = self._plugin_settings['studySamplesDatatable']
+        samples_study_column = self._plugin_settings['studySamplesStudyField']
+        samples_country_column = self._plugin_settings['studySamplesCountryField']
+        sample_countries_fields = self._plugin_settings['sampleCountriesFields']
+
+        # Create the datatable directories, if they don't already exist.
+        if not isdir(studies_datatable_path):
+            sys.stdout.write("Making the studies datatable directory, i.e. " + studies_datatable_path + '\n')
+            os.makedirs(studies_datatable_path)
+        if not isdir(study_people_datatable_path):
+            sys.stdout.write("Making the study_people datatable directory, i.e. " + study_people_datatable_path + '\n')
+            os.makedirs(study_people_datatable_path)
+        if not isdir(study_publications_datatable_path):
+            sys.stdout.write("Making the study_publications datatable directory, i.e. " + study_publications_datatable_path + '\n')
+            os.makedirs(study_publications_datatable_path)
+        if samples_table is not None and not isdir(sample_countries_datatable_path):
+            sys.stdout.write("Making the sample_countries datatable directory, i.e. " + sample_countries_datatable_path + '\n')
+            os.makedirs(sample_countries_datatable_path)
+
 
         # Specify the CSV file item separators.
         csv_value_separator = "\t"
@@ -158,24 +193,27 @@ class studyDetails(BasePlugin):
         studies_csv_file_path = join(studies_datatable_path, "data")
         study_people_csv_file_path = join(study_people_datatable_path, "data")
         study_publications_csv_file_path = join(study_publications_datatable_path, "data")
+        sample_countries_csv_file_path = join(sample_countries_datatable_path, "data")
 
         # Print a warning if any of the data files already exist.
-        if isfile(studies_csv_file_path) == True:
+        if isfile(studies_csv_file_path):
             print("Warning: Overwriting file: " + studies_csv_file_path)
-        if isfile(study_people_csv_file_path) == True:
+        if isfile(study_people_csv_file_path):
             print("Warning: Overwriting file: " + study_people_csv_file_path)
-        if isfile(study_publications_csv_file_path) == True:
+        if isfile(study_publications_csv_file_path):
             print("Warning: Overwriting file: " + study_publications_csv_file_path)
+        if isfile(sample_countries_csv_file_path):
+            print("Warning: Overwriting file: " + sample_countries_csv_file_path)
 
         # Open the CSV files for writing.
         studies_csv_file = open(studies_csv_file_path, 'w')
-        study_people_csv_file = open(study_people_csv_file_path, 'w')
         study_publications_csv_file = open(study_publications_csv_file_path, 'w')
+        study_people_csv_file = open(study_people_csv_file_path, 'w')
 
         # Append the heading lines.
-        studies_csv_file.write(csv_value_separator.join(["Study_number", "webTitle", "description"]) + csv_row_separator)
-        study_people_csv_file.write(csv_value_separator.join(["Study_number"] + self._plugin_settings["study_people_fields"]) + csv_row_separator)
-        study_publications_csv_file.write(csv_value_separator.join(["Study_number"] + self._plugin_settings["study_publications_fields"]) + csv_row_separator)
+        studies_csv_file.write(csv_value_separator.join(["study", "study_number", "webTitle", "description"]) + csv_row_separator)
+        study_publications_csv_file.write(csv_value_separator.join(["study"] + self._plugin_settings["studyPublicationsFields"]) + csv_row_separator)
+        study_people_csv_file.write(csv_value_separator.join(["study"] + self._plugin_settings["studyPeopleFields"]) + csv_row_separator)
 
         # Load the JSON into a Python object
         collaborations = self.fetchDetails()
@@ -217,13 +255,14 @@ class studyDetails(BasePlugin):
           else:
             self._log("Warning: duplicate study name:" + study['name'])
 
-        #Rewrite the samples table based on the "webStudy" field
+        #Rewrite the samples table based on the "webStudy" field and to note countries data
+        countryByISO = {}
         wanted_studies = None
         if samples_table is not None:
             reported = {}
             wanted_studies = set()
             samples_table_path = join(datatables_path, samples_table, 'data')
-            if isfile(samples_table_path) == True:
+            if isfile(samples_table_path):
                 print("Warning: Overwriting file: " + samples_table_path)
             with open(samples_table_path) as tsv:
                 reader = csv.DictReader(tsv, delimiter=str(csv_value_separator))
@@ -238,12 +277,20 @@ class studyDetails(BasePlugin):
                     row[samples_study_column + '_short'] = self.getStudyNumber(name, csv_value_separator)
                     row[samples_study_column] = name
                     wanted_studies.add(name)
+                    if samples_country_column:
+                        countryByISO[row[samples_country_column]] = {column: row[column] for column in sample_countries_fields}
+                        countryByISO[row[samples_country_column]][samples_country_column] = row[samples_country_column]
 
             fieldnames = list(set(reader.fieldnames + [samples_study_column + '_short']))
             with open(samples_table_path, 'w') as tsv:
                 writer = csv.DictWriter(tsv, fieldnames=fieldnames, delimiter=str(csv_value_separator))
                 writer.writeheader()
                 writer.writerows(rows)
+            if samples_country_column is not None:
+                with open(sample_countries_csv_file_path, 'w') as tsv:
+                    writer = csv.DictWriter(tsv, fieldnames=sample_countries_fields, delimiter=str(csv_value_separator))
+                    writer.writeheader()
+                    writer.writerows(countryByISO.values())
 
 
         ## Loop through the collaboration nodes (each represents a study)
@@ -260,23 +307,27 @@ class studyDetails(BasePlugin):
 
             # See if this study is in the project we want
             # by looking through the list of associated project names.
-            is_in_project = False
+            is_in_project = True if filter_by_project_name is None else False
             for project in projects:
 
-                project_name = project["name"];
+                project_name = project["name"]
 
-                if filter_by_project_name is None or project_name == filter_by_project_name:
+                if project_name == filter_by_project_name:
                     is_in_project = True
                     break
 
             # If this study isn't in the project, then skip to the next study.
-            if is_in_project != True:
+            if not is_in_project:
                 continue
 
-            if wanted_studies and study['name'] not in wanted_studies:
+            # Skip this study if it is not in the list of wanted_studies.
+            if wanted_studies is not None and study['name'] not in wanted_studies:
                 continue
 
-            if self._plugin_settings["webStudyHandling"] != "keep":
+            if wanted_studies is not None:
+              wanted_studies.remove(study['name'])
+
+            if self._plugin_settings["alfrescoWebStudyHandling"] != "keep":
               # Anything with a webStudy is a subset of another study.
               # Collect the substudy and process it in a subsequent parse.
               if "webStudy" in study:
@@ -286,12 +337,12 @@ class studyDetails(BasePlugin):
                 continue
 
             # Compose the study row, which will be appended to the CSV file
-            # Study_number    webTitle    description
+            # study	study_number    webTitle    description
 
-            Study_number = self.getStudyNumber(study['name'], csv_value_separator)
+            study_id = study['name']
+            study_number = self.getStudyNumber(study['name'], csv_value_separator)
 
-            study_row = []
-            study_row.append(Study_number)
+            study_row = [study_id, study_number]
             if study["webTitleApproved"] == "false":
                 self._log("Warning: webTitle not approved for:" + study['name'])
             study_row.append(study["webTitle"].replace(csv_value_separator, ""))
@@ -303,31 +354,33 @@ class studyDetails(BasePlugin):
             study_people = self.study_people(people, study)
 
             # Write the related records: people and publications.
-            personIdsByParentName[study['name']] = self.writeRelatedRecords(study_people, Study_number, self._plugin_settings["study_people_fields"], study_people_csv_file, csv_list_separator, csv_row_separator, csv_value_separator, self._plugin_settings["study_people_key_field"])
-            publicationIdsByParentName[study['name']] = self.writeRelatedRecords(study["publications"], Study_number, self._plugin_settings["study_publications_fields"], study_publications_csv_file, csv_list_separator, csv_row_separator, csv_value_separator, self._plugin_settings["study_publications_key_field"])
+            personIdsByParentName[study['name']] = self.writeRelatedRecords(study_people, study_id, self._plugin_settings["studyPeopleFields"], study_people_csv_file, csv_list_separator, csv_row_separator, csv_value_separator, self._plugin_settings["studyPeopleKeyField"])
+            publicationIdsByParentName[study['name']] = self.writeRelatedRecords(study["publications"], study_id, self._plugin_settings["studyPublicationsFields"], study_publications_csv_file, csv_list_separator, csv_row_separator, csv_value_separator, self._plugin_settings["studyPublicationsKeyField"])
 
             # Write the study to the CSV file
             studies_csv_file.write(csv_value_separator.join(study_row).encode('ascii', 'xmlcharrefreplace').encode('latin-1').replace("\n", " ").replace("\r", " ") + csv_row_separator)
+        if wanted_studies is not None and len(wanted_studies) > 0:
+            raise Exception('These studies were not found', str(wanted_studies))
 
-        if self._plugin_settings["webStudyHandling"] == "merge":
+        if self._plugin_settings["alfrescoWebStudyHandling"] == "merge":
           for substudyParentName in substudiesByParentName:
             print "substudyParentName: " + substudyParentName
             parentStudy = studiesByName[substudyParentName]
-            Study_number = self.getStudyNumber(parentStudy['name'], csv_value_separator)
+            study_id = parentStudy['name']
             for substudy in substudiesByParentName[substudyParentName]:
               study_people = self.study_people(people, substudy)
               new_study_people = []
               new_study_publications = []
               for study_person in study_people:
-                if study_person[self._plugin_settings["study_people_key_field"]] not in personIdsByParentName[substudyParentName]:
+                if study_person[self._plugin_settings["studyPeopleKeyField"]] not in personIdsByParentName[substudyParentName]:
                   new_study_people.append(study_person)
               for study_publication in substudy["publications"]:
-                if study_publication[self._plugin_settings["study_publication_key_field"]] not in publicationIdsByParentName[substudyParentName]:
+                if study_publication[self._plugin_settings["studyPublicationKeyField"]] not in publicationIdsByParentName[substudyParentName]:
                   new_study_publications.append(study_publication)
               if new_study_people:
-                added_people = self.writeRelatedRecords(new_study_people, Study_number, self._plugin_settings["study_people_fields"], study_people_csv_file, csv_list_separator, csv_row_separator, csv_value_separator, self._plugin_settings["study_people_key_field"])
+                added_people = self.writeRelatedRecords(new_study_people, study_id, self._plugin_settings["studyPeopleFields"], study_people_csv_file, csv_list_separator, csv_row_separator, csv_value_separator, self._plugin_settings["studyPeopleKeyField"])
               if new_study_publications:
-                added_publications = self.writeRelatedRecords(new_study_publications, Study_number, self._plugin_settings["study_publications_fields"], study_publications_csv_file, csv_list_separator, csv_row_separator, csv_value_separator, self._plugin_settings["study_publications_key_field"])
+                added_publications = self.writeRelatedRecords(new_study_publications, study_id, self._plugin_settings["studyPublicationsFields"], study_publications_csv_file, csv_list_separator, csv_row_separator, csv_value_separator, self._plugin_settings["studyPublicationsKeyField"])
 
         # Close the CSV file
         studies_csv_file.close()
@@ -361,15 +414,15 @@ class studyDetails(BasePlugin):
         # create a password manager
         password_mgr = urllib2.HTTPPasswordMgrWithDefaultRealm()
 
-        top_level_url = self._plugin_settings["studiesURL"]
-        password_mgr.add_password(None, top_level_url, self._plugin_settings["userId"], self._plugin_settings["password"])
+        top_level_url = self._plugin_settings["alfrescoStudiesURL"]
+        password_mgr.add_password(None, top_level_url, self._plugin_settings["alfrescoUserId"], self._plugin_settings["alfrescoUserPassword"])
 
         handler = urllib2.HTTPBasicAuthHandler(password_mgr)
 
         # create "opener" (OpenerDirector instance)
         opener = urllib2.build_opener(handler)
 
-        json_url = self._plugin_settings["studiesURL"]
+        json_url = self._plugin_settings["alfrescoStudiesURL"]
         # use the opener to fetch a URL
 
         json_file = opener.open(json_url)
@@ -384,8 +437,8 @@ class studyDetails(BasePlugin):
 
     def open_ldap(self):
         server = self._plugin_settings["ldapServer"]
-        user_dn = self._plugin_settings['userDN']
-        user_pw = self._plugin_settings['ldapPassword']
+        user_dn = self._plugin_settings['ldapUserDN']
+        user_pw = self._plugin_settings['ldapUserPassword']
 
         if server == None:
             return
@@ -442,7 +495,7 @@ class studyDetails(BasePlugin):
         study_people = {}
         study_list = []
 
-        for group_type in self._plugin_settings["peopleTypes"]:
+        for group_type in self._plugin_settings["alfrescoPeopleGroups"]:
             group = study["group" + group_type]
             for study_person in group:
                 malariagenUID = study_person['malariagenUID']

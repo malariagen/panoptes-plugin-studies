@@ -1,0 +1,44 @@
+nameSingle: sample
+namePlural: samples
+description: Sample metadata including country and region of collection.
+icon: fa-flask
+primKey: Sample
+quickFindFields: StudyCode
+
+propertyGroups:
+- id: Properties
+  name: Sample details
+- id: Geographic
+  name: Geographic details
+
+properties:
+- id: StudyCode
+  dataType: Text
+  description: Not set
+  groupId: Properties
+  relation:                         # This block defines a many-to-one foreign relation to a parent table
+    tableId: studies                 # Datatable id of the parent table
+    forwardName: part of             # Display name of the relation from child to parent
+    reverseName: contains            # Display name of the relation from parent to child
+
+- id: CountryCode
+  dataType: Text
+  groupId: Geographic
+  showInTable: false
+  description: Not set
+
+- id: CountryName
+  dataType: Text
+  groupId: Geographic
+  description: Not set
+
+- id: StudyCode_short
+  dataType: Text
+  groupId: Properties
+
+- id: Sample
+  dataType: Text
+  groupId: Properties
+  description: Not set
+
+  

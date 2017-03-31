@@ -1,0 +1,17 @@
+nameSingle: country
+namePlural: countries
+description: Information about the countries where samples were collected
+icon: fa-globe
+primKey: CountryCode
+isPositionOnGenome: false
+quickFindFields: CountryCode, CountryName
+sortDefault: CountryName
+listView: true
+properties:
+- id: CountryCode, CountryName
+  dataType: Text
+- id: CountryCode
+  name: ISO Code
+- id: CountryName
+  name: Name
+

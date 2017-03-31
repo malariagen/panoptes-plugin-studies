@@ -2,8 +2,12 @@ nameSingle: person
 namePlural: people
 primKey: uid
 properties:
-- id: Study_number
+- id: study
   dataType: Text
+  relation:
+    tableId: studies
+    forwardName: member of
+    reverseName: contains
 - id: jobTitle1
   dataType: Text
 - id: jobTitle2

@@ -1,9 +1,32 @@
+## Minimum requirements:
 plugin: studyDetails
-userId: batman@example.com
-password: ironmansocks
+ldapServer: ldaps://foo.example.org:636
+ldapUserDN: cn=foo,ou=bar,ou=baz,dc=foo,dc=bar
+ldapUserPassword: ldap_password_goes_here
+alfrescoUserId: user@example.org
+alfrescoUserPassword: alf_password_goes_here
 dataset: Studies
-samplesTable: samples
-project: Wonder Woman Web App
-ldapServer: ldaps://the.bat.cave:636
-userDN: cn=007,ou=superusers,ou=heroes,dc=justiceleague,dc=marvel
-ldapPassword: ironmansocks
+
+## Defaults:
+# studiesDatatable: studies
+# studyPeopleDatatable: study_people
+# studyPublicationsDatatable: study_publications
+# sampleCountriesDatatable: sample_countries
+
+## Optional additional filters (defaults shown):
+# alfrescoProject: 
+studySamplesDatatable: study_samples
+# studySamplesStudyField: StudyCode
+# studySamplesCountryField: CountryCode
+
+## Optional overrides (defaults shown):
+# alfrescoWebStudyHandling: ignore
+# alfrescoPeopleGroups: ['Contact', 'Public']
+# studyPeopleFields: ['jobTitle1', 'jobTitle2', 'jobTitle3', 'uid', 'researchGateURL', 'scholarURL', 'twitterURL', 'malariagenUID', 'oProfile1', 'oProfile2', 'oProfile3', 'ORCID', 'sn', 'mail', 'givenName', 'o1', 'o2', 'o3'],
+# studyPublicationsFields: ['doi', 'name', 'title', 'citation', 'pmid']
+# sampleCountriesFields: ['CountryCode', 'CountryName']
+# studyPeoplePersonField: uid
+# studyPublicationsPublicationField: pmid
+
+
+

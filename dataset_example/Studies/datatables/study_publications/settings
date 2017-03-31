@@ -2,8 +2,12 @@ nameSingle: publication
 namePlural: publications
 primKey: pmid
 properties:
-- id: Study_number
+- id: study
   dataType: Text
+  relation:
+   tableId: studies
+   forwardName: citation of
+   reverseName: contains
 - id: doi
   dataType: Text
 - id: name

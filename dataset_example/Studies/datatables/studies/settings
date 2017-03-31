@@ -1,8 +1,16 @@
 nameSingle: study
 namePlural: studies
-primKey: Study_number
+description: Studies description.
+primKey: study
+
+listView: True
+icon: fa-users
+itemTitle: <b>{{study_number}}</b> {{{webTitle}}}
+
 properties:
-- id: Study_number
+- id: study
+  dataType: Text
+- id: study_number
   dataType: Text
 - id: webTitle
   dataType: Text
