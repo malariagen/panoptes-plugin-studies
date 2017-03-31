@@ -4,4 +4,5 @@ dataTables:
 - studies
 - study_people
 - study_publications
-- samples
+- study_samples
+- sample_countries
